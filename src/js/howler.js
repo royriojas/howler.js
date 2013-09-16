@@ -1,36 +1,22 @@
-/*!
- *  howler.js v1.1.11
- *  howlerjs.com
- *
- *  (c) 2013, James Simpson of GoldFire Studios
- *  goldfirestudios.com
- *
- *  MIT License
- */
-
 ;(function(global) {
   // setup
   var cache = {};
 
   // setup the audio context
-  var ctx = null,
-    usingWebAudio = true,
+  var ctx,
+    usingWebAudio,
     // to avoid issue with jshint complaining about constructors that
     // should start with uppercase
     WebkitAudioContext = global.webkitAudioContext,
     AudioContext = global.AudioContext,
-    noAudio = false;
+    noAudio;
 
-  if (typeof AudioContext !== 'undefined') {
-    ctx = new AudioContext();
-  } else if (typeof webkitAudioContext !== 'undefined') {
-    ctx = new WebkitAudioContext();
-  } else if (typeof Audio !== 'undefined') {
-    usingWebAudio = false;
-  } else {
-    usingWebAudio = false;
-    noAudio = true;
-  }
+  ctx = typeof AudioContext !== 'undefined' ? new AudioContext() :
+    typeof WebkitAudioContext !== 'undefined' ? new WebkitAudioContext() : null;
+
+  usingWebAudio = !!ctx;
+  noAudio = typeof Audio === 'undefined';
+
 
   // create a master gain node
   if (usingWebAudio) {
@@ -393,10 +379,11 @@
           self._playStart = ctx.currentTime;
           node.gain.value = self._volume;
 
-          if (typeof node.bufferSource.start === 'undefined') {
-            node.bufferSource.noteGrainOn(0, pos, duration);
+          var bufferSource = node.bufferSource;
+          if (typeof bufferSource.start === 'undefined') {
+            bufferSource.noteGrainOn(0, pos, duration);
           } else {
-            node.bufferSource.start(0, pos, duration);
+            bufferSource.start(0, pos, duration);
           }
         } else {
           if (node.readyState === 4) {
@@ -1002,13 +989,18 @@
      */
     on: function(event, fn) {
       var self = this,
-        events = self['_on' + event];
+        parts = event.split('.'),
+        evtName = parts[0],
+        ns = parts[1],
+        events = self['_on' + evtName];
 
       if (typeof fn === "function") {
+        ns && (fn.namespace = ns);
         events.push(fn);
       } else {
         for (var i=0; i<events.length; i++) {
           if (fn) {
+            // passing and object argument?
             events[i].call(self, fn);
           } else {
             events[i].call(self);
@@ -1027,12 +1019,29 @@
      */
     off: function(event, fn) {
       var self = this,
-        events = self['_on' + event],
-        fnString = fn.toString();
+        parts = event.split('.'),
+        evtName = parts[0];
+
+      if (!evtName) {
+        throw new Error("eventName is required!");
+      }
+
+      var
+        ns = parts[1],
+        events = self['_on' + evtName];
+
+      if (ns) {
+        self['_on' + evtName] = events.filter(function (ele) {
+          return ele.namespace !== ns;
+        });
+
+        return self;
+      }
 
       // loop through functions in the event for comparison
       for (var i=0; i<events.length; i++) {
-        if (fnString === events[i].toString()) {
+
+        if (fn === events[i]) {
           events.splice(i, 1);
           break;
         }
