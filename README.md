@@ -1,3 +1,5 @@
+**Note**: This is a fork of [howler.js](http://goldfirestudios.com/proj/howlerjs/howlerjs_logo.png "howler.js") to add some custom functionality.
+
 ![howler.js](http://goldfirestudios.com/proj/howlerjs/howlerjs_logo.png "howler.js")
 
 ## Description

@@ -8,18 +8,23 @@
  *  MIT License
  */
 
-(function() {
+;(function(global) {
   // setup
   var cache = {};
 
   // setup the audio context
   var ctx = null,
     usingWebAudio = true,
+    // to avoid issue with jshint complaining about constructors that
+    // should start with uppercase
+    WebkitAudioContext = global.webkitAudioContext,
+    AudioContext = global.AudioContext,
     noAudio = false;
+
   if (typeof AudioContext !== 'undefined') {
     ctx = new AudioContext();
   } else if (typeof webkitAudioContext !== 'undefined') {
-    ctx = new webkitAudioContext();
+    ctx = new WebkitAudioContext();
   } else if (typeof Audio !== 'undefined') {
     usingWebAudio = false;
   } else {
@@ -325,7 +330,7 @@
 
       // if the sprite doesn't exist, play nothing
       if (!self._sprite[sprite]) {
-        if (typeof callback === 'function') callback();
+        callback && callback();
         return self;
       }
 
@@ -423,7 +428,7 @@
 
         // fire the play event and send the soundId back in the callback
         self.on('play');
-        if (typeof callback === 'function') callback(soundId);
+        callback && callback(soundId);
 
         return self;
       });
@@ -784,20 +789,22 @@
       // set the volume to the start position
       self.volume(from, id);
 
+      var doFade = function(i) {
+        var change = self._volume + (dir === 'up' ? 0.01 : -0.01) * i,
+          vol = Math.round(1000 * change) / 1000,
+          toVol = to;
+
+        setTimeout(function() {
+          self.volume(vol, id);
+
+          if (vol === toVol) {
+            callback && callback();
+          }
+        }, stepTime * i);
+      };
+
       for (var i=1; i<=steps; i++) {
-        (function() {
-          var change = self._volume + (dir === 'up' ? 0.01 : -0.01) * i,
-            vol = Math.round(1000 * change) / 1000,
-            toVol = to;
-
-          setTimeout(function() {
-            self.volume(vol, id);
-
-            if (vol === toVol) {
-              if (callback) callback();
-            }
-          }, stepTime * i);
-        })();
+        doFade(i);
       }
     },
 
@@ -824,7 +831,7 @@
       var self = this;
 
       return self.fade(self._volume, to, len, function() {
-        if (callback) callback();
+        callback && callback();
         self.pause(id);
 
         // fire ended event
@@ -1178,4 +1185,4 @@
     window.Howler = Howler;
     window.Howl = Howl;
   }
-})();
+}(this));
